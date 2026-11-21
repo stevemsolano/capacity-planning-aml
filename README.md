@@ -10,6 +10,8 @@
 
 **Try the simulator:** open `docs/simulator.html` in a browser — pick a demand shock and a lever (do nothing / overtime / hire 30 / both) and see backlog, SLA and cost for months 1–3, from the 48 real forecast scenarios the pipeline produces. No install, no server.
 
+**Interactive tool (English):** open `docs/tool.html` — the full planning tool. Move the sliders (demand, productivity, attrition, trend, hires, overtime) and the forecast recomputes live with the same engine as `src/forecast/monthly_forecast.py`, plus one-way sensitivity analysis (tornado chart), a cost-vs-backlog trade-off chart, and the orchestration flow. Verified against the pipeline: default case reproduces 1,870 / 4,576 / 7,936 exactly.
+
 ## Run it in 5 commands
 
 ```bash

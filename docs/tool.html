@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capacity Planning Tool — AML/KYC</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#eef4f7;color:#0a2942}
+.wrap{max-width:1020px;margin:0 auto;padding:24px}
+h1{font-size:26px;margin:0}.sub{color:#555;line-height:1.5}
+h2{font-size:19px;margin:30px 0 8px}h3{font-size:15px;margin:18px 0 6px}
+p{line-height:1.55}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+.step{background:#0a2942;color:#fff;padding:7px 11px;border-radius:8px;font-size:13px}
+.arrow{color:#16885d;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.panel{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+label{display:block;font-weight:700;margin:14px 0 4px;font-size:14px}
+label span{float:right;font-weight:400;color:#16885d}
+input[type=range]{width:100%}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.pill{border:2px solid #ccc;background:#fff;padding:8px 13px;border-radius:20px;cursor:pointer;font-size:14px}
+.pill.on{border-color:#16885d;background:#e6f4ee;font-weight:700}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+th,td{padding:10px;text-align:right;border-bottom:1px solid #eee}th:first-child,td:first-child{text-align:left}
+th{background:#0a2942;color:#fff}.bad{color:#c0392b;font-weight:700}.good{color:#16885d;font-weight:700}
+.verdict{border-radius:10px;padding:16px;font-size:17px;font-weight:700;margin:16px 0}
+.verdict.bad{background:#fdecea;color:#c0392b}.verdict.good{background:#e6f4ee;color:#16885d}.verdict.warn{background:#fff8e1;color:#7a5b00}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+.card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card b{font-size:20px;display:block}.card span{font-size:13px;color:#555}
+.note{background:#fff8e1;border-left:4px solid #f2b705;padding:12px 14px;border-radius:6px;font-size:14px;line-height:1.5}
+code{background:#e3eef5;padding:2px 6px;border-radius:5px}
+pre{background:#0a2942;color:#eaf2f8;padding:14px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.5}
+svg{width:100%;height:auto;display:block}
+.muted{color:#666;font-size:13px}
+</style></head><body><div class="wrap">
+<h1>Capacity Planning Tool — AML/KYC</h1>
+<p class="sub">How many analysts do we need next quarter, what happens to backlog and SLA if demand moves, and what does it cost to cover it with overtime vs hiring? Every number below is computed live by the same engine as the Python pipeline (<code>src/forecast/monthly_forecast.py</code>) — same base demand, same ramp, same attrition, same costs. Change any input and the forecast, the charts and the sensitivity analysis all recompute.</p>
+
+<h2>How it is orchestrated</h2>
+<div class="flow"><span class="step">Generate · seed 42</span><span class="arrow">→</span><span class="step">Load · DuckDB</span><span class="arrow">→</span><span class="step">dbt · staging → marts</span><span class="arrow">→</span><span class="step">Prefect flow</span><span class="arrow">→</span><span class="step">Forecast · Backtest · Monte Carlo</span><span class="arrow">→</span><span class="step">GitHub Actions CI · 24 tests</span><span class="arrow">→</span><span class="step">Tableau Public</span></div>
+<p class="muted">Run it yourself: <code>python3 flows/capacity_pipeline.py</code> — the JS engine on this page mirrors that pipeline exactly. Prefect is optional: with it installed the steps run as a flow with retries, logs and schedule; without it they run as plain functions with identical logic. Airflow is mapped 1:1 in <code>docs/orchestration.md</code>.</p>
+
+<div class="grid">
+<div class="panel">
+<h3>Scenario — what changes?</h3>
+<label>Demand change <span id="v-demand">+25%</span></label>
+<input type="range" id="in-demand" min="-20" max="50" step="5" value="25">
+<label>Productivity change <span id="v-prod">0%</span></label>
+<input type="range" id="in-prod" min="-20" max="10" step="5" value="0">
+<label>Attrition / month <span id="v-attr">2.0%</span></label>
+<input type="range" id="in-attr" min="0" max="5" step="0.5" value="2">
+<label>Trend (manager judgment) <span id="v-trend">0% / mo</span></label>
+<input type="range" id="in-trend" min="-5" max="5" step="1" value="0">
+<p class="muted">Measured trend on 90 days is −4.01%/mo. It is <b>not</b> auto-applied: compounding a noisy OLS slope would cut the M3 backlog from 7,936 to ~2,900 on noise alone. You set it — the model does not invent it.</p>
+</div>
+<div class="panel">
+<h3>Levers — what do we do about it?</h3>
+<label>New hires <span id="v-hires">0 analysts</span></label>
+<input type="range" id="in-hires" min="0" max="60" step="5" value="0">
+<label>Overtime <span id="v-ot">0 h / day (team)</span></label>
+<input type="range" id="in-ot" min="0" max="100" step="10" value="0">
+<div class="presets" id="presets"></div>
+<p class="muted">Hires ramp 50% in weeks 1–2, 75% in weeks 3–4, 100% after. Overtime is total team hours per day, not per analyst. Costs (illustrative): $30/h base, $45/h overtime, $72,000/yr per hire + $5,000 onboarding.</p>
+</div>
+</div>
+
+<div id="verdict" class="verdict"></div>
+<h2>3-month forecast</h2>
+<table><tr><th>Month</th><th>Ending backlog</th><th>±1 std interval</th><th>SLA breach days</th><th>Cost</th></tr><tbody id="rows"></tbody></table>
+<p id="costline"></p>
+<div id="chart-backlog"></div>
+
+<h2>Sensitivity analysis — what moves Month 3 backlog most?</h2>
+<p>One-way sensitivity: each input is moved from its base value while everything else is held fixed. The bar is the change in Month 3 ending backlog. This is the chart to show a manager who asks “what are we most exposed to?”</p>
+<div id="chart-tornado"></div>
+<p class="muted" id="tornado-note"></p>
+
+<h2>Cost vs backlog — the trade-off</h2>
+<p>Four preset levers under the current scenario, Month 3. Overtime buys time; hiring buys a level.</p>
+<div id="chart-tradeoff"></div>
+
+<h2>The numbers behind the forecast</h2>
+<div class="cards">
+<div class="card"><b>6.1%</b><span>Backtest MAPE (train 60 days → next 21 business days). Bias +6.1%: the forecast runs high.</span></div>
+<div class="card"><b>8,070 / 9,541</b><span>Monte Carlo, M3, +25% surge: P50 / P90 ending backlog. P(SLA breach) 100% if we do nothing.</span></div>
+<div class="card"><b>317.6 → 406.5</b><span>Required FTE: gross → net of shrinkage → staffed at 85% target utilisation.</span></div>
+<div class="card"><b>87% / 6.8%</b><span>Average utilisation / absenteeism over 90 days. 25 days over-utilised (&gt;95%).</span></div>
+<div class="card"><b>853</b><span>Peak backlog in history (spike days 18–22, +25%). Ending backlog: 0.</span></div>
+<div class="card"><b>24 / 24</b><span>Tests passing. GitHub Actions blocks the merge if one fails.</span></div>
+</div>
+
+<div class="note"><b>Honest limits:</b> data is 100% synthetic (seed 42) — the numbers prove the method, not an operation. Costs are illustrative, not real figures. The forecast is a scenario, not a prediction. Annual seasonality cannot be estimated from 90 days and is not faked. Code: <code>github.com/stevemsolano/capacity-planning-aml</code> · Dashboard: <code>public.tableau.com/views/capacity-planning-aml/Dashboard1</code></div>
+</div>
+<script>
+const P = {"baseDemand": 1574.8666666666666, "baseProductivity": 4.958333333333333, "baseAnalysts": 379.8, "demandStdPct": 8.521011420688165, "startingBacklog": 0, "businessDays": [22, 22, 21], "slaLimit": 5000, "overtimeHourly": 45, "hireAnnual": 72000, "hireOnboarding": 5000, "hoursPerDay": 8, "ramp": [0.5, 0.5, 0.75, 0.75], "trendMeasuredPct": -4.01};
+// --- Engine: mirrors src/forecast/monthly_forecast.py::_run_months ---
+function runMonths(o){
+  let backlog = P.startingBacklog;
+  const demand = P.baseDemand * (1 + o.demand/100) * (o.mult || 1);
+  const prod = P.baseProductivity * (1 + o.prod/100);
+  const perOtHour = prod / P.hoursPerDay;
+  let dayIdx = 0; const out = [];
+  P.businessDays.forEach((nDays, mi)=>{
+    const m = mi + 1;
+    const d = demand * Math.pow(1 + o.trend/100, m - 1);
+    const analysts = P.baseAnalysts * Math.pow(1 - o.attr/100, m - 1);
+    let mDemand=0, mBreach=0, mOt=0, mHire=0;
+    for(let i=0;i<nDays;i++){
+      const week = Math.floor(dayIdx/5);
+      const ramp = week < P.ramp.length ? P.ramp[week] : 1.0;
+      let cap = (analysts + o.hires*ramp) * prod + o.ot * perOtHour;
+      const completed = Math.min(cap, backlog + d);
+      backlog = Math.round(backlog + d - completed);
+      mDemand += Math.round(d);
+      if(backlog >= P.slaLimit) mBreach++;
+      mOt += o.ot * P.overtimeHourly;
+      if(o.hires) mHire += (P.hireAnnual/12) * o.hires / nDays;
+      dayIdx++;
+    }
+    if(o.hires && m===1) mHire += P.hireOnboarding * o.hires;
+    out.push({month:m, demand:mDemand, endingBacklog:backlog, breach:mBreach,
+      slaOk: backlog < P.slaLimit, ot:Math.round(mOt*100)/100, hire:Math.round(mHire*100)/100,
+      cost:Math.round((mOt+mHire)*100)/100});
+  });
+  return out;
+}
+function forecast(o){
+  const base = runMonths(o);
+  const pct = P.demandStdPct/100;
+  const lo = runMonths({...o, mult:1-pct}), hi = runMonths({...o, mult:1+pct});
+  return base.map((b,i)=>({...b, low:lo[i].endingBacklog, high:hi[i].endingBacklog}));
+}
+const $ = id=>document.getElementById(id);
+const state = {demand:25, prod:0, attr:2, trend:0, hires:0, ot:0};
+const PRESETS = [
+  {n:"Do nothing", h:0, o:0}, {n:"Overtime 50h/day", h:0, o:50},
+  {n:"Hire 30", h:30, o:0}, {n:"Hire 30 + overtime", h:30, o:50},
+];
+function fmt(n){ return n.toLocaleString("en-US"); }
+function money(n){ return "$" + n.toLocaleString("en-US"); }
+function barChart(values, labels, colors, maxV, yLabel){
+  const W=920,H=260,padL=56,padB=34,padT=14;
+  const bw = (W-padL-20)/values.length;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${yLabel}">`;
+  s += `<line x1="${padL}" y1="${H-padB}" x2="${W-10}" y2="${H-padB}" stroke="#888"/>`;
+  s += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#888"/>`;
+  // SLA line at 5000
+  const ySla = (H-padB) - (P.slaLimit/maxV)*(H-padB-padT);
+  if(P.slaLimit < maxV) s += `<line x1="${padL}" y1="${ySla}" x2="${W-10}" y2="${ySla}" stroke="#c0392b" stroke-dasharray="6 4"/><text x="${W-12}" y="${ySla-6}" fill="#c0392b" font-size="12" text-anchor="end">SLA 5,000</text>`;
+  values.forEach((v,i)=>{
+    const h = (v/maxV)*(H-padB-padT), x = padL + i*bw + bw*0.2, y = (H-padB)-h;
+    s += `<rect x="${x}" y="${y}" width="${bw*0.6}" height="${h}" fill="${colors[i]}" rx="3"/>`;
+    s += `<text x="${x+bw*0.3}" y="${y-6}" font-size="13" font-weight="700" text-anchor="middle" fill="#0a2942">${fmt(v)}</text>`;
+    s += `<text x="${x+bw*0.3}" y="${H-12}" font-size="12" text-anchor="middle" fill="#555">${labels[i]}</text>`;
+  });
+  return s + "</svg>";
+}
+function render(){
+  $("v-demand").textContent = (state.demand>=0?"+":"") + state.demand + "%";
+  $("v-prod").textContent = (state.prod>=0?"+":"") + state.prod + "%";
+  $("v-attr").textContent = state.attr.toFixed(1) + "%";
+  $("v-trend").textContent = (state.trend>=0?"+":"") + state.trend + "% / mo";
+  $("v-hires").textContent = state.hires + " analysts";
+  $("v-ot").textContent = state.ot + " h / day (team)";
+  const rows = forecast(state);
+  const tb = $("rows"); tb.innerHTML = "";
+  let total = 0;
+  rows.forEach(r=>{
+    total += r.cost;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>Month ${r.month}</td><td class="${r.slaOk?"good":"bad"}">${fmt(r.endingBacklog)}</td><td>${fmt(r.low)} – ${fmt(r.high)}</td><td>${r.breach}</td><td>${money(r.cost)}</td>`;
+    tb.appendChild(tr);
+  });
+  const m3 = rows[2], v = $("verdict");
+  if(!m3.slaOk){ v.className="verdict bad"; v.textContent = `SLA breached in Month ${m3.month}: ending backlog ${fmt(m3.endingBacklog)} exceeds the 5,000 limit.`; }
+  else if(m3.endingBacklog>0){ v.className="verdict warn"; v.textContent = `SLA holds, but with ${fmt(m3.endingBacklog)} cases of backlog in Month 3.`; }
+  else { v.className="verdict good"; v.textContent = `SLA holds all 3 months. Ending backlog: ${fmt(m3.endingBacklog)}.`; }
+  $("costline").innerHTML = `<b>Total cost, 3 months: ${money(total)}</b> — ${state.hires ? "Month 1 includes $" + fmt(state.hires*5000) + " onboarding." : "No hiring cost."}`;
+  const maxV = Math.max(8000, ...rows.map(r=>r.high));
+  $("chart-backlog").innerHTML = "<h3>Ending backlog by month (with SLA limit)</h3>" +
+    barChart(rows.map(r=>r.endingBacklog), rows.map(r=>"Month "+r.month),
+      rows.map(r=>r.slaOk?"#16885d":"#c0392b"), maxV, "Ending backlog");
+  // --- Sensitivity: one-way tornado on Month 3 backlog ---
+  const baseM3 = rows[2].endingBacklog;
+  const tests = [
+    {label:"Demand +10 pts", fn:s=>({...s, demand:s.demand+10})},
+    {label:"Demand −10 pts", fn:s=>({...s, demand:s.demand-10})},
+    {label:"Productivity −5 pts", fn:s=>({...s, prod:s.prod-5})},
+    {label:"Productivity +5 pts", fn:s=>({...s, prod:s.prod+5})},
+    {label:"Attrition +1 pt/mo", fn:s=>({...s, attr:s.attr+1})},
+    {label:"Overtime +25 h/day", fn:s=>({...s, ot:s.ot+25})},
+    {label:"Hires +15", fn:s=>({...s, hires:s.hires+15})},
+    {label:"Trend +2%/mo", fn:s=>({...s, trend:s.trend+2})},
+  ];
+  const sens = tests.map(t=>({label:t.label, delta:forecast(t.fn(state))[2].endingBacklog - baseM3}))
+    .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  const maxD = Math.max(100, ...sens.map(s=>Math.abs(s.delta)));
+  const W=920, rowH=34, H=sens.length*rowH+30;
+  let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+  svg += `<line x1="${W/2}" y1="8" x2="${W/2}" y2="${H-22}" stroke="#888"/>`;
+  svg += `<text x="${W/2}" y="${H-6}" font-size="12" text-anchor="middle" fill="#555">Base Month 3 backlog: ${fmt(baseM3)}</text>`;
+  sens.forEach((s,i)=>{
+    const y = 14 + i*rowH, w = Math.abs(s.delta)/maxD * (W/2 - 130);
+    const x = s.delta>=0 ? W/2 : W/2 - w;
+    svg += `<text x="${W/2-8}" y="${y+13}" font-size="13" text-anchor="end" fill="#0a2942">${s.label}</text>`;
+    svg += `<rect x="${x}" y="${y}" width="${Math.max(w,2)}" height="18" fill="${s.delta>=0?"#c0392b":"#16885d"}" rx="3"/>`;
+    svg += `<text x="${s.delta>=0 ? x+w+6 : x-6}" y="${y+14}" font-size="12" font-weight="700" text-anchor="${s.delta>=0?"start":"end"}" fill="#0a2942">${s.delta>=0?"+":""}${fmt(s.delta)}</text>`;
+  });
+  $("chart-tornado").innerHTML = svg + "</svg>";
+  const top = sens[0];
+  $("tornado-note").textContent = `Biggest driver right now: ${top.label} moves Month 3 backlog by ${top.delta>=0?"+":""}${fmt(top.delta)} cases. Demand is usually the dominant risk — that is why the hiring trigger is written on demand, not on a date.`;
+  // --- Trade-off: 4 preset levers under current scenario ---
+  const trade = PRESETS.map(p=>{
+    const r = forecast({...state, hires:p.h, ot:p.o});
+    return {n:p.n, backlog:r[2].endingBacklog, cost:r.reduce((a,x)=>a+x.cost,0)};
+  });
+  const maxC = Math.max(1000, ...trade.map(t=>t.cost));
+  const maxB = Math.max(1000, ...trade.map(t=>t.backlog));
+  let sc = `<svg viewBox="0 0 ${W} 300">`;
+  sc += `<line x1="56" y1="260" x2="${W-10}" y2="260" stroke="#888"/><line x1="56" y1="20" x2="56" y2="260" stroke="#888"/>`;
+  sc += `<text x="${W/2}" y="292" font-size="12" text-anchor="middle" fill="#555">Total cost, 3 months ($)</text>`;
+  sc += `<text x="14" y="140" font-size="12" text-anchor="middle" fill="#555" transform="rotate(-90 14 140)">Month 3 backlog</text>`;
+  trade.forEach(t=>{
+    const x = 56 + (t.cost/maxC)*(W-90), y = 260 - (t.backlog/maxB)*220;
+    sc += `<circle cx="${x}" cy="${y}" r="9" fill="${t.backlog<5000?"#16885d":"#c0392b"}"/>`;
+    sc += `<text x="${x+14}" y="${y+4}" font-size="13" fill="#0a2942">${t.n}: ${fmt(t.backlog)} cases, ${money(t.cost)}</text>`;
+  });
+  $("chart-tradeoff").innerHTML = sc + "</svg>";
+}
+["in-demand","in-prod","in-attr","in-trend","in-hires","in-ot"].forEach(id=>{
+  $(id).addEventListener("input", e=>{
+    const map = {"in-demand":"demand","in-prod":"prod","in-attr":"attr","in-trend":"trend","in-hires":"hires","in-ot":"ot"};
+    state[map[id]] = parseFloat(e.target.value); render();
+  });
+});
+const pp = $("presets");
+PRESETS.forEach(p=>{
+  const b = document.createElement("button"); b.className="pill"; b.textContent=p.n;
+  b.onclick = ()=>{
+    state.hires=p.h; state.ot=p.o;
+    $("in-hires").value=p.h; $("in-ot").value=p.o;
+    [...pp.children].forEach(c=>c.classList.remove("on")); b.classList.add("on"); render();
+  };
+  pp.appendChild(b);
+});
+render();
+</script></body></html>
