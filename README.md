@@ -12,6 +12,8 @@
 
 **Interactive tool (English):** open `docs/tool.html` — the full planning tool. Move the sliders (demand, productivity, attrition, trend, hires, overtime) and the forecast recomputes live with the same engine as `src/forecast/monthly_forecast.py`, plus one-way sensitivity analysis (tornado chart), a cost-vs-backlog trade-off chart, and the orchestration flow. Verified against the pipeline: default case reproduces 1,870 / 4,576 / 7,936 exactly.
 
+**EDA — what the numbers look like:** `docs/eda.md` — weekday effect, demand distribution, spike, queues, correlations, and the honest weaknesses the EDA exposes (productivity barely varies, backlog mostly zero, no annual seasonality). Start here before the forecast.
+
 ## Run it in 5 commands
 
 ```bash
