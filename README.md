@@ -6,6 +6,8 @@
 
 **Data:** 100% synthetic, fixed seed (42). No real employer data, names, or screenshots. Scale is inspired by a real back-office AML/KYC operation (~50,000 cases/month, ~400 analysts) without copying it.
 
+**Live dashboard:** https://public.tableau.com/views/capacity-planning-aml/Dashboard1 (Tableau Public, manual snapshot — no auto-refresh)
+
 ## Run it in 5 commands
 
 ```bash
