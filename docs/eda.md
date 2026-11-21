@@ -61,6 +61,31 @@ backlog 370; TM QC 683 / 288; Sanctions 390 / 165.
 - **Spike flag:** days 18–22 (demand +25%) — 5 calendar days, 3 of
   them weekdays.
 
+## Data quality checks — run before any analysis
+
+A robust EDA checks the data before trusting it. All checks below were
+run on the two files and passed:
+
+| Check | Result |
+|---|---|
+| Null / empty cells | 0 in both files |
+| Duplicate dates (`demand_daily`) | 0 |
+| Duplicate day+queue (`demand_by_queue`) | 0 |
+| Date gaps | None — 90 consecutive days |
+| `analysts = scheduled − absent` | 0 violations |
+| `capacity = analysts × productivity` | 0 violations |
+| `completed > capacity` | 0 violations |
+| Negative values | None |
+| Queue demand reconciles to daily demand | ±1 case on 32 days — integer rounding from the 45/35/20 split, net −2 cases over 90 days. Immaterial. |
+
+Two more numbers that frame the operation: absent rate mean 6.8%
+(range 5.1–9.0%, 15 days above 8%); utilisation mean 87.0%, 25 days
+above 95%, 17 days at 100%. And the trend inside the history:
+weekday demand averaged 1,726 in the first 30 business days vs 1,575
+in the last 30 (−8.8%) — consistent with the measured OLS trend of
+−4.01%/month reported in the forecast, and the reason the trend is
+reported but not auto-applied.
+
 ## The shape of the data
 
 | Variable | Mean | Median | Std | Min | Max |
