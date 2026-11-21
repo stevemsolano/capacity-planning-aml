@@ -4,6 +4,63 @@ Small exploratory analysis of the 90-day synthetic history
 (`data/raw/demand_daily.csv`, `data/raw/demand_by_queue.csv`, seed 42).
 Everything below is computed from those files, not asserted.
 
+## The dataset — what each record is
+
+Two files, one grain each. All 90 days are calendar days from
+**Mon 2026-01-05 to Sat 2026-04-04**: 65 business days (Mon–Fri) and
+25 weekend days.
+
+### File 1: `demand_daily.csv` — one row per day (90 rows)
+
+One record = one day of operation for the whole team.
+
+| Column | What it is | Example (day 1) |
+|---|---|---|
+| `day` | Day number, 1–90 | 1 |
+| `date` | Calendar date | 2026-01-05 |
+| `weekday` | Mon–Sun | Mon |
+| `demand` | Cases arriving that day | 1,727 |
+| `analysts_scheduled` | Analysts rostered that day | 403 |
+| `absent` | Analysts absent that day | 21 |
+| `analysts` | Available = scheduled − absent | 382 |
+| `productivity` | Cases completed per available analyst | 4.82 |
+| `capacity` | Cases the team could complete = analysts × productivity | 1,841 |
+| `completed` | Cases actually completed (≤ capacity, ≤ backlog + demand) | 1,727 |
+| `backlog` | Cases left uncompleted at end of day | 0 |
+| `sla_ok` | True when backlog < 5,000 | True |
+
+Totals over 90 days: demand **127,553** cases, completed **127,553**
+(everything that arrived was eventually completed — ending backlog is
+0), capacity **146,566** (about 15% headroom over demand on average).
+
+### File 2: `demand_by_queue.csv` — one row per day per queue (270 rows)
+
+One record = one day for one queue. Same 90 days × 3 queues.
+
+| Queue (category) | SLA | Rows | Total demand | Share | Backlog-days* |
+|---|---|---|---|---|---|
+| KYC Onboarding | 5 days | 90 | 57,399 | 45.0% | 2,127 |
+| Transaction Monitoring QC | 5 days | 90 | 44,642 | 35.0% | 1,655 |
+| Sanctions Screening | 2 days | 90 | 25,510 | 20.0% | 947 |
+
+\*Backlog-days = sum of the daily backlog column over 90 days, not the
+ending backlog. The per-queue backlog is a **pro-rata allocation** of
+the total backlog by each queue's share of demand — a transparent
+placeholder, not a claim about real per-queue backlogs (see
+`docs/metric-definitions.md`). Sanctions is the tightest SLA (2 days)
+with the smallest share — the queue to watch first if backlog builds.
+
+Example rows (day 22, 2026-01-26, spike day): KYC demand 878 /
+backlog 370; TM QC 683 / 288; Sanctions 390 / 165.
+
+### Categories in the data
+
+- **Queues:** 3 (above), each with its own SLA in days.
+- **Weekdays:** 7 (Mon–Sun); the planning grain is Mon–Fri.
+- **SLA outcome:** `sla_ok` True on 90/90 days in both files.
+- **Spike flag:** days 18–22 (demand +25%) — 5 calendar days, 3 of
+  them weekdays.
+
 ## The shape of the data
 
 | Variable | Mean | Median | Std | Min | Max |
