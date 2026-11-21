@@ -1,0 +1,36 @@
+version: 2
+sources:
+  - name: raw
+    tables:
+      - name: raw_demand_daily
+      - name: raw_demand_by_queue
+models:
+  - name: stg_demand_daily
+    description: Clean daily demand/capacity feed (synthetic, seeded).
+    columns:
+      - name: day
+        tests: [unique, not_null]
+      - name: demand
+        tests: [not_null]
+      - name: backlog
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+  - name: mart_backlog_sla
+    description: Single definition of backlog and SLA (backlog < 5000).
+    columns:
+      - name: day
+        tests: [unique, not_null]
+      - name: backlog
+        tests: [not_null]
+  - name: mart_capacity_daily
+    columns:
+      - name: day
+        tests: [unique, not_null]
+      - name: capacity
+        tests: [not_null]
+  - name: mart_demand_daily
+    columns:
+      - name: day
+        tests: [unique, not_null]

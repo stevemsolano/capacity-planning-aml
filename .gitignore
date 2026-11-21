@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+warehouse/
+data/
+demand_daily.csv
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/profiles.yml
+.DS_Store

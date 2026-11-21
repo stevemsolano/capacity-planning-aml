@@ -1,0 +1,18 @@
+# Copy to profiles.yml (gitignored) and point dbt at the local warehouse.
+# DuckDB (local, default): pip install dbt-duckdb
+capacity_planning_aml:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: warehouse/capacity.duckdb
+      threads: 4
+    # Postgres (Supabase free tier / Docker) — same models, same tests:
+    # prod:
+    #   type: postgres
+    #   host: "{{ env_var('PGHOST') }}"
+    #   user: "{{ env_var('PGUSER') }}"
+    #   password: "{{ env_var('PGPASSWORD') }}"
+    #   port: 5432
+    #   dbname: capacity
+    #   schema: marts

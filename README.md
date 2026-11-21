@@ -1,0 +1,83 @@
+# Capacity Planning AML/KYC — Project 1
+
+**Decision this answers:** how many analysts do we need next week/month, what happens to backlog and SLA if demand or productivity moves, and what does it cost to cover it with overtime vs. hiring?
+
+**User:** an operations leader running an AML/KYC queue. **Manager signal:** a what-if simulator with costs and trade-offs — not a dashboard of what happened.
+
+**Data:** 100% synthetic, fixed seed (42). No real employer data, names, or screenshots. Scale is inspired by a real back-office AML/KYC operation (~50,000 cases/month, ~400 analysts) without copying it.
+
+## Run it in 5 commands
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python3 src/generate/generate.py --days 90 --seed 42
+python3 flows/capacity_pipeline.py
+python3 -m pytest tests/ -q
+```
+
+Planning is monthly, not daily: 90 days of daily history are the engine, the decision is a 3-month monthly forecast (Month 1–3 = 22 / 22 / 21 business days). See `data/forecast_3m.csv`.
+
+Without the venv / DuckDB, the pipeline still runs: DuckDB is optional, the simulator and marts fall back to stdlib. With DuckDB installed you also get `warehouse/capacity.duckdb`.
+
+## What you get
+
+| Output | Where | What it proves |
+|---|---|---|
+| Daily + per-queue demand (90 days) | `data/raw/demand_daily.csv`, `demand_by_queue.csv` | Seeded, reproducible, weekday + spike (days 18–22, +25%) |
+| Warehouse | `warehouse/capacity.duckdb` | Raw tables, DuckDB (Postgres via dbt profile) |
+| Marts | `data/marts/mart_*.csv` + `dbt_project/models/marts/` | One definition per metric; Tableau reads these CSVs. Includes `mart_monthly_summary` (planning grain) |
+| Monthly history | `data/monthly_history.csv` | Demand / capacity / backlog by calendar month (Jan–Mar + partial Apr) |
+| 3-month forecast | `data/forecast_3m.csv` + `.json` | 4 scenarios × 3 months × 4 shocks, with ±1 std interval, trend reported, attrition 2%/mo |
+| Daily ops | `data/ops_daily.csv` + `ops_summary.json` | Spike / absenteeism / utilisation / shortfall per day — the complement to monthly planning |
+| Backtest | `data/backtest.json` | Train 60d → forecast next business days vs. actuals: MAPE, WAPE, bias |
+| Monte Carlo | `data/monte_carlo.json` | 200 seeded runs: P50 / P90 backlog and P(SLA breach) per month |
+| WFM summary | `data/wfm_summary.json` | Shrinkage, required FTE (gross / net / at 85% utilisation), Little's Law wait, aging, skill mix |
+| Scenarios (weekly, reference) | `data/scenarios.json` | Base vs. overtime vs. hire vs. both, over 4 / 8 / 12 weeks |
+| Dashboard | `tableau/` | Workbook + spec for Tableau Public (manual publish, see below) |
+
+## The decision, priced — 3-month monthly forecast (verified run, seed 42, 90 days)
+
+Historical window (90 days): final backlog 0, peak backlog 853 during the demand spike (days 18–22, +25%). The spike builds backlog, the team clears it in about a week — that is the story the dashboard shows. Monthly history: Jan demand 40,751, Feb 39,050, Mar 42,081.
+
+Priced decision — sustained demand +25% (the spike, made sustained; in `data/forecast_3m.csv`):
+
+| Scenario | Month 1 backlog | Month 2 backlog | Month 3 backlog | Cost M1 / M2 / M3 |
+|---|---|---|---|---|
+| Do nothing | 1,870 | 4,576 | **7,936 — SLA breached** | $0 |
+| Overtime 50h/day | 1,188 | 3,212 | 5,921 — SLA breached | $49,500 / $49,500 / $47,250 |
+| Hire 30 analysts | 0 | 0 | 231 | $330,000* / $180,000 / $180,000 |
+| Hire 30 + overtime | 0 | 0 | 0 | $379,500 / $229,500 / $227,250 |
+
+\* Month 1 hire cost includes one-time onboarding ($5,000 × 30). Attrition (2%/mo) is in these numbers: it is why do-nothing worsens from M2 to M3 and why even the hire ends at 231 in M3. Overtime slows the backlog but never stops it; the hire is the only single lever that holds SLA over 3 months. That is the tradeoff, priced: overtime buys time, a hire buys a sustained level. Costs are illustrative demo assumptions, not real figures — see `docs/metric-definitions.md`.
+
+**Uncertainty, not a point:** M3 do-nothing central case is 7,936, with a ±1 std interval of 0 to 18,856. Monte Carlo (200 runs, +25% surge): M3 P50 8,070, P90 9,541, P(SLA breach) 100% — under a sustained +25% surge, breaching SLA by M3 is essentially certain if nothing is done. The interval is wide because utilisation runs at ~87% — near capacity, small demand moves swing backlog a lot. That is the honest story, and it is why the plan is a rolling monthly forecast, not a one-off prediction.
+
+**Decision triggers:** start hiring when demand runs +25% above forecast for 2 consecutive weeks OR backlog crosses 3,000 and is rising. Use overtime only as a bridge while hiring ramps. Re-forecast monthly; retire a scenario when its trigger has not fired for a full month.
+
+## Modern WFM, in one paragraph
+
+Back-office capacity planning, not contact-center Erlang C (none is claimed here). Shrinkage = absent + 3% training; required FTE is shown gross / net / staffed at 85% target utilisation (317.6 / 345.5 / 406.5 FTE for the current weekday demand — the 85% buffer is what absorbs variability). Little's Law turns backlog into wait time (0.6 days at peak backlog 853). Aging is estimated from that wait. Skill mix prices KYC / TM QC / Sanctions separately instead of hiding them in one blended productivity. Forecast accuracy is measured, not asserted: backtest MAPE 6.1%, bias +6.1% (forecast high), verdict usable.
+
+## Stack — and why
+
+- **Prefect (optional):** `flows/capacity_pipeline.py` — generate → load → marts → simulate. Retries, logs, schedule. Runs as plain functions without Prefect installed.
+- **dbt:** `dbt_project/` — staging → intermediate → marts, with tests in `models/schema.yml`. One definition of backlog/SLA lives in `mart_backlog_sla.sql`.
+- **GitHub Actions:** `.github/workflows/ci.yml` — pytest + pipeline on every PR. A failing test blocks the merge.
+- **Tableau:** live to the marts in production; Tableau Public is a manual snapshot (see `tableau/README.md`). No fake auto-refresh is claimed.
+- **Airflow / Autosys:** Airflow is documented as a 1:1 variant in `docs/orchestration.md`, not a second pipeline. Autosys is the enterprise scheduling layer in banking — it cannot be demoed in a public repo (no free tier / server / licence), so it is mentioned, not faked.
+
+## Metric definitions
+
+`docs/metric-definitions.md` — backlog, SLA (backlog < 5,000), utilisation, queue SLA days, and the simulator's cost assumptions. **All money figures are illustrative demo assumptions, not real figures.**
+
+## Decisions — why it looks this way
+
+`docs/decisions.md` — 9 ADRs, each with the alternative rejected and what it cost. This is the file to read before an interview: if a reviewer asks "why Prefect, why monthly, why no ML, why no Erlang C?", the answer is there, in writing, before they ask.
+
+## What is NOT here
+
+- No real employer data. No invented savings figures.
+- No `.twbx` binary as the only artefact: the `.twb` is versioned XML and the marts are CSVs anyone can open.
+- No Erlang C, no Genesys, no contact-center service level in seconds. This is back-office queueing with an SLA in days.
+- No trend auto-applied from 90 noisy days, no annual seasonality faked from 90 days. Both are reported as limitations, not hidden.

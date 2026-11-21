@@ -1,0 +1,7 @@
+# Core pipeline runs on stdlib only. These add the warehouse + orchestration.
+duckdb==2.0.1
+pytest==9.2.0
+# Optional — uncomment to run as a real Prefect flow / dbt project:
+# prefect>=3.0
+# dbt-duckdb>=1.9
+# tableauhyperapi>=0.0.213
