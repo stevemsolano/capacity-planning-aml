@@ -8,6 +8,8 @@
 
 **Live dashboard:** https://public.tableau.com/views/capacity-planning-aml/Dashboard1 (Tableau Public, manual snapshot — no auto-refresh)
 
+**Try the simulator:** open `docs/simulator.html` in a browser — pick a demand shock and a lever (do nothing / overtime / hire 30 / both) and see backlog, SLA and cost for months 1–3, from the 48 real forecast scenarios the pipeline produces. No install, no server.
+
 ## Run it in 5 commands
 
 ```bash
