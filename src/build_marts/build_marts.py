@@ -26,7 +26,8 @@ def _strip_ref(sql: str) -> str:
 
 
 def _strip_source(sql: str) -> str:
-    return re.sub(r"\{\{\s*source\('[^']+',\s*'([^']+)'\)\s*\}\}", r"\1", sql)
+    # Mirror dbt's resolution: source('raw', '<table>') lives in schema raw.
+    return re.sub(r"\{\{\s*source\('[^']+',\s*'([^']+)'\)\s*\}\}", r"raw.\1", sql)
 
 
 def _materialize_with_duckdb():

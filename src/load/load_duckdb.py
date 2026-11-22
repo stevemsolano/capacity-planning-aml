@@ -3,7 +3,10 @@
 DuckDB is optional: if it is not installed this script prints a clear
 message and exits 0 — the pipeline still runs on CSVs + the simulator.
 With DuckDB installed (requirements.txt), it creates
-warehouse/capacity.duckdb with raw_demand_daily / raw_demand_by_queue.
+warehouse/capacity.duckdb with raw_demand_daily / raw_demand_by_queue
+in schema `raw` — the same layout the dbt project declares in
+dbt_project/models/schema.yml (source `raw`). Marts and staging views
+live in the default `main` schema.
 
 Run: python3 src/load/load_duckdb.py
 """
@@ -29,12 +32,13 @@ def main():
         return 1
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(DB_PATH))
-    con.execute(f"CREATE OR REPLACE TABLE raw_demand_daily AS "
+    con.execute("CREATE SCHEMA IF NOT EXISTS raw")
+    con.execute(f"CREATE OR REPLACE TABLE raw.raw_demand_daily AS "
                 f"SELECT * FROM read_csv_auto('{daily}')")
     if by_queue.exists():
-        con.execute(f"CREATE OR REPLACE TABLE raw_demand_by_queue AS "
+        con.execute(f"CREATE OR REPLACE TABLE raw.raw_demand_by_queue AS "
                     f"SELECT * FROM read_csv_auto('{by_queue}')")
-    n = con.execute("SELECT count(*) FROM raw_demand_daily").fetchone()[0]
+    n = con.execute("SELECT count(*) FROM raw.raw_demand_daily").fetchone()[0]
     print(f"loaded {n} daily rows into {DB_PATH}")
     con.close()
     return 0
