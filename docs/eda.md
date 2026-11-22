@@ -164,6 +164,46 @@ normal-sized move swings the backlog a lot.
   forecast under a sustained surge — which is the whole point of the
   project.
 
+## Demand by queue over time
+
+![Daily demand by queue](images/eda-queues.png)
+
+The three queues move together — same shape, different scale. There is
+no queue with its own season or its own spike: when demand jumps, it
+jumps in all three at once, which is why a single team-level forecast
+with a queue split is a reasonable model here. Weekday means: KYC 743
+(±76), TM QC 578 (±59), Sanctions 330 (±34).
+
+## Outlier days
+
+Rule: weekday demand outside mean ± 2 standard deviations
+(weekday mean 1,652, std 170 → bounds 1,312–1,991). Only 2 of 65
+weekdays qualify — both at the start of the spike:
+
+| Day | Date | Demand | z-score | Capacity | Backlog |
+|---|---|---|---|---|---|
+| 18 | 2026-01-22 | 2,186 | +3.15 | 2,033 | 153 |
+| 19 | 2026-01-23 | 2,091 | +2.59 | 1,881 | 363 |
+
+No weekday fell below the lower bound: there are no "quiet" outliers
+in this history. The spike is the only outlier event.
+
+Days with backlog above 500 (5 days) tell the second half of the
+story — the backlog did not peak on the highest-demand day, it peaked
+after it, when weekend capacity dropped:
+
+| Day | Date | Backlog | Demand | Capacity |
+|---|---|---|---|---|
+| 20 | 2026-01-24 (Sat) | 609 | 1,288 | 1,042 |
+| 21 | 2026-01-25 (Sun) | 717 | 783 | 675 |
+| 22 | 2026-01-26 (Mon) | 823 | 1,951 | 1,845 |
+| 23 | 2026-01-27 (Tue) | 853 | 1,882 | 1,852 |
+| 24 | 2026-01-28 (Wed) | 520 | 1,735 | 2,068 |
+
+Read: the backlog built over the weekend (low staffing) and cleared
+once weekday capacity returned. Staffing the weekend is part of the
+capacity decision, not just headcount.
+
 ## Honest weaknesses the EDA exposes
 
 1. **Productivity barely varies** (std 0.2 on a mean of 5.0). The
