@@ -82,6 +82,24 @@ answer is here — and in the code the ADR points to.
   0) because the test window was calm. The file says so by showing
   the test window, not just the score.
 
+## ADR-10: Raw tables land in schema `raw`, not `main`
+- Context: the dbt project declared its sources in schema `raw`
+  (`{{ source('raw', ...) }}`), but the loader wrote the raw tables
+  into DuckDB's default `main` schema. The mismatch was invisible
+  until the first real `dbt build` ran in CI and failed with
+  "schema raw does not exist" — the pipeline's own DuckDB runner had
+  masked it by stripping source references to unqualified names.
+- Decision: the loader creates schema `raw` and lands the raw tables
+  there; the local runner mirrors dbt's resolution (`raw.<table>`).
+  Marts and staging views stay in `main`. One layout, declared in
+  one place (`dbt_project/models/schema.yml`), produced by the loader.
+- Rejected: pointing the dbt source at schema `main` (one-line fix,
+  but it would have blessed a layout where raw feeds sit next to
+  marts with nothing separating them).
+- Cost: two files changed (loader + runner) instead of one, and the
+  fix was verified by the scheduled CI run going green, not by
+  assertion.
+
 ## ADR-9: No Erlang C, no ML
 - Context: this is back-office queueing with an SLA in days, not
   contact-center calls in seconds, and there is no labelled training
