@@ -67,9 +67,9 @@ Back-office capacity planning, not contact-center Erlang C (none is claimed here
 
 ## Stack — and why
 
-- **Prefect (optional):** `flows/capacity_pipeline.py` — generate → load → marts → simulate. Retries, logs, schedule. Runs as plain functions without Prefect installed.
-- **dbt:** `dbt_project/` — staging → intermediate → marts, with tests in `models/schema.yml`. One definition of backlog/SLA lives in `mart_backlog_sla.sql`.
-- **GitHub Actions:** `.github/workflows/ci.yml` — pytest + pipeline on every PR. A failing test blocks the merge.
+- **Prefect (optional):** `flows/capacity_pipeline.py` — generate → load → marts → simulate. Retries and logs when Prefect is installed; runs as plain functions without it.
+- **dbt:** `dbt_project/` — staging → intermediate → marts, with tests in `models/schema.yml`. One definition of backlog/SLA lives in `mart_backlog_sla.sql`. A real `dbt build` runs in the scheduled workflow (see `docs/orchestration.md`).
+- **GitHub Actions:** `.github/workflows/ci.yml` — pytest + pipeline on every PR. A failing test blocks the merge. `.github/workflows/scheduled.yml` — the same pipeline plus `dbt build`, daily at 11:00 UTC (06:00 EST) and on manual dispatch, with public run logs.
 - **Tableau:** live to the marts in production; Tableau Public is a manual snapshot (see `tableau/README.md`). No fake auto-refresh is claimed.
 - **Airflow / Autosys:** Airflow is documented as a 1:1 variant in `docs/orchestration.md`, not a second pipeline. Autosys is the enterprise scheduling layer in banking — it cannot be demoed in a public repo (no free tier / server / licence), so it is mentioned, not faked.
 

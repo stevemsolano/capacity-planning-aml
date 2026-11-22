@@ -1,0 +1,26 @@
+name: scheduled-run
+# Daily proof the pipeline still runs end to end: generate -> pipeline ->
+# dbt build -> pytest. Runs on a schedule and on manual dispatch.
+# Cron is UTC: 11:00 UTC = 06:00 EST (07:00 EDT in summer).
+on:
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pip install dbt-duckdb
+      - run: python3 src/generate/generate.py --days 90 --seed 42
+      - run: python3 flows/capacity_pipeline.py
+      - run: cp dbt_project/profiles.yml.example dbt_project/profiles.yml
+      - run: dbt deps --project-dir dbt_project --profiles-dir dbt_project
+      # Run from the repo root so profiles.yml's relative warehouse path resolves.
+      - run: dbt build --project-dir dbt_project --profiles-dir dbt_project
+      - run: python3 -m pytest tests/ -q
+      - run: test -f data/marts/mart_backlog_sla.csv && test -f data/scenarios.json

@@ -1,4 +1,7 @@
 # Copy to profiles.yml (gitignored) and point dbt at the local warehouse.
+# Run dbt from the repo root so the relative path below resolves to
+# <repo root>/warehouse/capacity.duckdb. Running from dbt_project/
+# will fail with "No such file or directory".
 # DuckDB (local, default): pip install dbt-duckdb
 capacity_planning_aml:
   target: dev
