@@ -8,11 +8,9 @@
 
 **Live dashboard:** https://public.tableau.com/views/capacity-planning-aml/Dashboard1 (Tableau Public, manual snapshot — no auto-refresh)
 
-**Try the simulator:** open `docs/simulator.html` in a browser — pick a demand shock and a lever (do nothing / overtime / hire 30 / both) and see backlog, SLA and cost for months 1–3, from the 48 real forecast scenarios the pipeline produces. No install, no server.
+**Try it live — no install, no clone:** [Interactive tool](https://stevemsolano.github.io/capacity-planning-aml/tool.html) — the full planning tool. Move the sliders (demand, productivity, attrition, trend, hires, overtime) and the forecast recomputes live with the same engine as `src/forecast/monthly_forecast.py`, plus one-way sensitivity analysis (tornado chart), a cost-vs-backlog trade-off chart, and the orchestration flow. Verified against the pipeline: default case reproduces 1,870 / 4,576 / 7,936 exactly. Also live: [simulator (48 real scenarios)](https://stevemsolano.github.io/capacity-planning-aml/simulator.html) and [EDA](https://stevemsolano.github.io/capacity-planning-aml/eda.md).
 
-**Interactive tool (English):** open `docs/tool.html` — the full planning tool. Move the sliders (demand, productivity, attrition, trend, hires, overtime) and the forecast recomputes live with the same engine as `src/forecast/monthly_forecast.py`, plus one-way sensitivity analysis (tornado chart), a cost-vs-backlog trade-off chart, and the orchestration flow. Verified against the pipeline: default case reproduces 1,870 / 4,576 / 7,936 exactly.
-
-**EDA — what the numbers look like:** `docs/eda.md` — weekday effect, demand distribution, spike, queues, correlations, and the honest weaknesses the EDA exposes (productivity barely varies, backlog mostly zero, no annual seasonality). Start here before the forecast.
+**EDA — what the numbers look like:** `docs/eda.md` — record grain, columns and queues, data-quality checks, weekday effect, demand distribution, spike, per-queue time series, outlier days, correlations, and the honest weaknesses the EDA exposes (productivity barely varies, backlog mostly zero, no annual seasonality). Start here before the forecast.
 
 ## Run it in 5 commands
 
