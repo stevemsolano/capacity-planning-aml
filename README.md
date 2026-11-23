@@ -12,6 +12,24 @@
 
 **EDA — what the numbers look like:** `docs/eda.md` — record grain, columns and queues, data-quality checks, weekday effect, demand distribution, spike, per-queue time series, outlier days, correlations, and the honest weaknesses the EDA exposes (productivity barely varies, backlog mostly zero, no annual seasonality). Start here before the forecast.
 
+## The operation being simulated
+
+A back-office AML/KYC case-review operation at a large bank — not a call center. Analysts do not take calls; they work cases: onboarding files to verify, transaction-monitoring alerts to quality-check, sanctions-screening hits to clear. Each case sits in a queue until an analyst picks it up, and the clock that matters is measured in days, not seconds.
+
+**The three queues.** Work arrives in three streams, each with its own service level:
+
+| Queue | Share of demand | SLA (days to clear) | What the work is |
+|---|---|---|---|
+| KYC Onboarding | 45% | 5 | Verifying new-customer files before the account can operate |
+| Transaction Monitoring QC | 35% | 5 | Quality-checking alerts raised by the transaction-monitoring system |
+| Sanctions Screening | 20% | 2 | Clearing name matches against sanctions lists — the tightest clock, because a held payment is a held customer |
+
+**Scale and rhythm.** About 400 analysts clear roughly 50,000 cases a month. Demand is weekday-shaped: ~1,650 cases on a typical weekday, ~950 on Saturday, ~655 on Sunday — so the operation staffs ~410 analysts on weekdays and ~150 on weekends. Absenteeism runs 5–9% (mean 6.8%), and an analyst clears about 5 cases a day (4.6–5.4). Utilisation averages 87%, against an 85% target — the team runs close to full, which is why small demand moves swing the backlog.
+
+**How backlog happens.** When demand outruns capacity, cases wait. Backlog is simply cases waiting past today: it was 0 at the end of the 90-day window, peaked at 853 during the demand spike (days 18–22, +25%), and took about a week to clear. SLA holds while aggregate backlog stays under 5,000. The risk is not a single bad day — it is a sustained surge, because hiring takes weeks to ramp (50% productive in weeks 1–2, 75% in weeks 3–4) while overtime only buys hours. That is the planning problem this repo prices: what to do, and when, before the backlog crosses the line.
+
+**What is real and what is not.** The shape of the operation — queues, SLAs, scale, weekday pattern, absenteeism, ramp — is modeled on a real-scale back-office AML/KYC operation. The data itself is 100% synthetic (fixed seed 42), and the money figures are illustrative demo assumptions, not real costs. Nothing here is real employer data.
+
 ## Run it in 5 commands
 
 ```bash
@@ -79,7 +97,7 @@ Back-office capacity planning, not contact-center Erlang C (none is claimed here
 
 ## Decisions — why it looks this way
 
-`docs/decisions.md` — 9 ADRs, each with the alternative rejected and what it cost. This is the file to read before an interview: if a reviewer asks "why Prefect, why monthly, why no ML, why no Erlang C?", the answer is there, in writing, before they ask.
+`docs/decisions.md` — 10 ADRs, each with the alternative rejected and what it cost. This is the file to read before an interview: if a reviewer asks "why Prefect, why monthly, why no ML, why no Erlang C?", the answer is there, in writing, before they ask.
 
 ## What is NOT here
 
