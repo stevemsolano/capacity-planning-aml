@@ -75,7 +75,7 @@ svg{width:100%;height:auto;display:block}
 <p class="muted" id="tornado-note"></p>
 
 <h2>Cost vs backlog — the trade-off</h2>
-<p>Four preset levers under the current scenario, Month 3. Overtime buys time; hiring buys a level.</p>
+<p>Four preset levers under the current scenario, Month 3. Overtime slows the backlog; hiring holds SLA.</p>
 <div id="chart-tradeoff"></div>
 
 <h2>The numbers behind the forecast</h2>
@@ -88,7 +88,7 @@ svg{width:100%;height:auto;display:block}
 <div class="card"><b>24 / 24</b><span>Tests passing. GitHub Actions blocks the merge if one fails.</span></div>
 </div>
 
-<div class="note"><b>Honest limits:</b> data is 100% synthetic (seed 42) — the numbers prove the method, not an operation. Costs are illustrative, not real figures. The forecast is a scenario, not a prediction. Annual seasonality cannot be estimated from 90 days and is not faked. Code: <code>github.com/stevemsolano/capacity-planning-aml</code> · Dashboard: <code>public.tableau.com/views/capacity-planning-aml/Dashboard1</code></div>
+<div class="note"><b>Limits:</b> data is 100% synthetic (seed 42) — the numbers prove the method. Costs are illustrative, not real figures. The forecast is a scenario, not a prediction. Annual seasonality cannot be estimated from 90 days. Code: <code>github.com/stevemsolano/capacity-planning-aml</code> · Dashboard: <code>public.tableau.com/views/capacity-planning-aml/Dashboard1</code></div>
 </div>
 <script>
 const P = {"baseDemand": 1574.8666666666666, "baseProductivity": 4.958333333333333, "baseAnalysts": 379.8, "demandStdPct": 8.521011420688165, "startingBacklog": 0, "businessDays": [22, 22, 21], "slaLimit": 5000, "overtimeHourly": 45, "hireAnnual": 72000, "hireOnboarding": 5000, "hoursPerDay": 8, "ramp": [0.5, 0.5, 0.75, 0.75], "trendMeasuredPct": -4.01};

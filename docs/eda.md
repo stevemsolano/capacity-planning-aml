@@ -1,8 +1,8 @@
-# EDA — what the numbers actually look like
+# EDA — what the numbers look like
 
 Small exploratory analysis of the 90-day synthetic history
 (`data/raw/demand_daily.csv`, `data/raw/demand_by_queue.csv`, seed 42).
-Everything below is computed from those files, not asserted.
+Everything below is computed from those files.
 
 ## The dataset — what each record is
 
@@ -63,8 +63,7 @@ backlog 370; TM QC 683 / 288; Sanctions 390 / 165.
 
 ## Data quality checks — run before any analysis
 
-A robust EDA checks the data before trusting it. All checks below were
-run on the two files and passed:
+All checks below were run on the two files and passed:
 
 | Check | Result |
 |---|---|
@@ -98,7 +97,7 @@ reported but not auto-applied.
 | Absent / day | 24 | 25 | 8 | 8 | 37 |
 | Backlog | 53 | 0 | 170 | 0 | 853 |
 
-Read it carefully: the overall means mix weekdays and weekends, so they
+Note: the overall means mix weekdays and weekends, so they
 understate the working week. Weekday demand averages ~1,650/day; the
 forecast correctly uses weekday averages only (base 1,575/day on the
 last 30 business days).
@@ -161,8 +160,7 @@ normal-sized move swings the backlog a lot.
   day's demand. That is why the forecast is monthly and scenario-based,
   not a daily regression.
 - SLA held on 90/90 days in history. The breach only appears in the
-  forecast under a sustained surge — which is the whole point of the
-  project.
+  forecast under a sustained surge.
 
 ## Demand by queue over time
 
@@ -200,18 +198,17 @@ after it, when weekend capacity dropped:
 | 23 | 2026-01-27 (Tue) | 853 | 1,882 | 1,852 |
 | 24 | 2026-01-28 (Wed) | 520 | 1,735 | 2,068 |
 
-Read: the backlog built over the weekend (low staffing) and cleared
+So the backlog built over the weekend (low staffing) and cleared
 once weekday capacity returned. Staffing the weekend is part of the
 capacity decision, not just headcount.
 
-## Honest weaknesses the EDA exposes
+## Weaknesses the EDA exposes
 
 1. **Productivity barely varies** (std 0.2 on a mean of 5.0). The
    −10% productivity shock in the forecast is an assumption, not an
    observed regime. With real data, productivity by queue and tenure
    would be the first thing to calibrate.
 2. **Backlog is mostly zero**, so any correlation with backlog is
-   estimated on 17 days. The Monte Carlo and the interval carry the
-   uncertainty for exactly this reason.
+   estimated on 17 days. The Monte Carlo and the interval carry that uncertainty.
 3. **No annual seasonality** can be estimated from 90 days. The
    weekday pattern is real; anything about Q4 vs Q1 would be invented.

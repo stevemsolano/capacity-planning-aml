@@ -1,9 +1,6 @@
 # Decision log (ADRs) — why this project looks the way it does
 
-A generic AI dump has no decisions. This repo does. Each ADR records
-the context, the decision, the alternative rejected, and the cost of
-the choice. If a reviewer asks "why did you do it this way?", the
-answer is here — and in the code the ADR points to.
+Each ADR records the context, the decision, the alternative rejected, and the cost of the choice. If a reviewer asks "why did you do it this way?", the answer is here — and in the code the ADR points to.
 
 ## ADR-1: Synthetic data, seeded — no real employer data
 - Context: the domain is AML/KYC capacity planning, learned running a back-office AML/KYC operation at a large bank.
@@ -13,8 +10,7 @@ answer is here — and in the code the ADR points to.
 - Rejected: anonymised real extracts (still a leak risk, and
   unreproducible), and a generic public dataset (no AML/KYC queues,
   no SLA in days, no staffing decision).
-- Cost: the numbers prove the method, not the operation. The README
-  and every cost figure say so.
+- Cost: the numbers prove the method. They say nothing about a real operation.
 
 ## ADR-2: Monthly planning, daily engine — not daily planning
 - Context: hiring takes weeks; a daily forecast hides the decision.
@@ -50,7 +46,7 @@ answer is here — and in the code the ADR points to.
 - Rejected: 100% (queuing trap — as utilisation approaches 100%,
   wait time explodes; there is no slack for a spike or an absence).
 - Cost: the staffed number is ~28% above gross FTE (317.6 → 406.5).
-  That gap is the point, and it is shown, not hidden.
+  That gap is the buffer.
 
 ## ADR-6: Trend is measured, not auto-applied
 - Context: OLS on 90 noisy days gives a trend of −4.0%/month.
@@ -59,12 +55,10 @@ answer is here — and in the code the ADR points to.
 - Rejected: auto-applying it (it would have cut the M3 backlog from
   7,936 to ~2,900 on noise alone — the repo proves this in
   `docs/metric-definitions.md`).
-- Cost: the forecast is deliberately dumber than a naive OLS
-  extrapolation, and more honest for it.
+- Cost: the forecast ignores a measured −4%/month trend. That is the trade: a simpler forecast that does not chase noise.
 
 ## ADR-7: Scenarios are what-ifs with triggers, not predictions
-- Context: a +25% demand forecast presented as a prediction would be
-  a lie. It is a scenario: the historical spike, made sustained.
+- Context: a +25% demand forecast presented as a prediction would be misleading. It is a scenario: the historical spike, made sustained.
 - Decision: every forecast row carries `kind = "scenario — not a
   prediction"`, plus decision triggers (hire when demand runs +25%
   for 2 weeks or backlog crosses 3,000 and is rising).
@@ -73,14 +67,13 @@ answer is here — and in the code the ADR points to.
 - Cost: the repo must maintain 4 shocks × 4 scenarios × 3 months,
   and explain them, instead of one clean number.
 
-## ADR-8: Forecast accuracy is measured, not asserted
-- Context: "my forecast is good" is cheap. A backtest is not.
+## ADR-8: Forecast accuracy is measured
+- Context: a forecast needs to be measured, not claimed.
 - Decision: train 60 days → forecast the next business days →
   compare to actuals (MAPE, WAPE, bias). Re-run monthly.
 - Rejected: shipping a forecast with no error metric.
 - Cost: the current backtest is flattering (MAPE 6.1%, backlog error
-  0) because the test window was calm. The file says so by showing
-  the test window, not just the score.
+  0) because the test window was calm. The file shows the test window next to the score, so the reader can see why.
 
 ## ADR-10: Raw tables land in schema `raw`, not `main`
 - Context: the dbt project declared its sources in schema `raw`
@@ -97,8 +90,7 @@ answer is here — and in the code the ADR points to.
   but it would have blessed a layout where raw feeds sit next to
   marts with nothing separating them).
 - Cost: two files changed (loader + runner) instead of one, and the
-  fix was verified by the scheduled CI run going green, not by
-  assertion.
+  fix was verified by the scheduled CI run going green.
 
 ## ADR-9: No Erlang C, no ML
 - Context: this is back-office queueing with an SLA in days, not
@@ -107,7 +99,5 @@ answer is here — and in the code the ADR points to.
 - Decision: no Erlang C, no Genesys, no ML model. Monte Carlo +
   interval + backtest carry the uncertainty instead.
 - Rejected: adding Erlang C to sound "WFM" (wrong domain) and adding
-  a gradient-boosting forecaster on 90 synthetic days (overfit
-  theatre).
-- Cost: a reviewer looking for ML buzzwords will not find them. A
-  reviewer looking for judgment will.
+  a gradient-boosting forecaster on 90 synthetic days (it would overfit).
+- Cost: a reviewer looking for ML will not find any here.

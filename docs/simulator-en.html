@@ -84,7 +84,7 @@ function render(){
   if(m3 && !m3.sla_ok){ v.className="verdict bad"; v.textContent = `⛔ SLA breached in month ${m3.forecast_month}: backlog ${m3.ending_backlog.toLocaleString()} exceeds the 5,000 limit.`; }
   else if(m3 && m3.ending_backlog>0){ v.className="verdict warn"; v.textContent = `⚠️ SLA holds, but with backlog of ${m3.ending_backlog.toLocaleString()} in month 3.`; }
   else { v.className="verdict good"; v.textContent = `✅ SLA holds all 3 months. Ending backlog: ${(m3?m3.ending_backlog:0).toLocaleString()}.`; }
-  document.getElementById("costline").innerHTML = `<b>Total 3-month cost: $${total.toLocaleString()}</b> — ${lever==="hire_30_analysts"||lever==="hire_30_plus_overtime_50h" ? "month 1 includes $150,000 of onboarding (30 × $5,000)." : "no hiring cost."} Overtime buys time, hiring buys level.`;
+  document.getElementById("costline").innerHTML = `<b>Total 3-month cost: $${total.toLocaleString()}</b> — ${lever==="hire_30_analysts"||lever==="hire_30_plus_overtime_50h" ? "month 1 includes $150,000 of onboarding (30 × $5,000)." : "no hiring cost."} Overtime slows the backlog; hiring holds SLA.`;
 }
 render();
 </script></body></html>
